@@ -19,5 +19,10 @@ remove(vec.key)
 
 colnames(df) <- c("id", names(df[2:ncol(df)]))
 
-# Change date class
+# Data frame column classes
+
+str(df)
+
+    ## Change date class
+
 df$date <- as.Date(df$date, format = "%m/%d/%Y")
