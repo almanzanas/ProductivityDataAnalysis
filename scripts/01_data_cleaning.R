@@ -5,6 +5,9 @@
 # Enabling 'just in time' compilation
 compiler::enableJIT(3)
 
+# Changing scientific notion
+options( scipen = 999, digits = 4 )
+
 # Check duplicates
 anyDuplicated(df[,2:ncol(df)])
 
@@ -22,7 +25,7 @@ df.na <- df[which(is.na(df$wip)),]
 df.na %>% select(team, department, date, wip, actual_productivity)
 table(df$department) # Same number of rows on department-finishing
 
-    ## Answering: department == finishing means wip == NA ?
+    ## Answering: department == finishing, means wip == NA ?
 
 df.dep.filt <- df %>% filter(department == "finishing")
 all.equal( df.dep.filt$id, df.na$id ) # TRUE
@@ -31,115 +34,173 @@ remove(df.na)
 
 # filling NA values with 0 (if the team finish, then no wip)
 
-df.no.na <- df %>% replace_na( list( wip = 0) )
-anyNA(df.no.na) # FALSE
+df.clean <- df %>% replace_na( list( wip = 0) )
+anyNA(df.clean) # FALSE
 
-table(df.no.na$idle_time)
+table(df.clean$idle_time)
 
 # Checking unique values
 
-for (var in colnames(df.no.na[,-1])){
-    if( is.character(df.no.na[, var])){
-        print( paste(var, unique(df.no.na[, var]) ) )
+for (var in colnames(df.clean[,-1])){
+    if( is.character(df.clean[, var])){
+        print( paste(var, unique(df.clean[, var]) ) )
     }
 } # There are 5 Quarters.
 
     ## The month was divided into four quarters
     ## then let's add Quarter5 to Quarter4
 
-filt.quarter <- df.no.na %>% 
+filt.quarter <- df.clean %>% 
     select(id, date, quarter) %>% 
     filter(quarter == "Quarter5") 
 # Days 29, 30 and 31 are labeled as Quarter5, should be Quarter4
 remove(filt.quarter)
 
-df.no.na <- df.no.na %>% 
+df.clean <- df.clean %>% 
     mutate(
         quarter = replace(quarter, quarter == "Quarter5", "Quarter4")
     )
-df.no.na %>% 
+df.clean %>% 
     select(id, date, quarter) %>% 
     filter(quarter == "Quarter5")
 
-# Checking outlier values by IQR
 
-out.cols <- c("actual_productivity", "wip", "idle_time", "idle_men")
-out.list <- list()
-for (var in out.cols) {
-    if ( is.numeric(df.no.na[, var]) ) {
-        out <- boxplot.stats(df.no.na[, var])$out
-        out.list[[var]] <- out
-    }
-}
-remove(var)
-remove(out)
+# Exploring the data with histograms
+for (var in colnames(select_if(df.clean[,1:ncol(df.clean)], is.numeric) ) ) {
+    hist( unlist( df.clean[,var]), col = "blue",
+          main = paste("Histogram of", var),
+          xlab = var)
+}   # Target_productivity and actual_productivity have left tail
+    # and actual_productivity is close to normal distribution
+    # The rest of variables have right tail
+    # except no_of_worker which seems to be mesokurtic
 
-# We assume the data is objectively recorded, then the outliers are real values
-# but extreme ones. It will remain stored for modeling/transformation purposes.
 
-# Exploring the data frame
+# Creating a target variable for productivity
+df.clean <- df.clean %>% mutate( 
+    productivity_cat = ifelse(actual_productivity >= targeted_productivity,
+                              "achieved", "unsuccessful")
+    )
 
-num.cols <- NULL
-for (var in colnames(df.no.na)) {
-    if ( is.numeric(df.no.na[, var]) ) {
-        num.cols <- c(num.cols, var)
-    }
-}
-cat("Numeric columns:\n", num.cols, sep = ", ")
+# Summary to explore the data
 
-char.cols <- NULL
-for (var in colnames(df.no.na)) {
-    if ( is.character(df.no.na[, var]) ) {
-        char.cols <- c(char.cols, var)
-    }
-}
-cat("Numeric columns:\n", char.cols, sep = ", ")
+table( df.clean$productivity_cat)
+summ <- skim(df.clean)
+summ %>% 
+    filter(skim_type == "numeric") %>%
+    mutate( cv = numeric.sd / numeric.mean )
+    # For incentive, idle_time, idle_men, no_of_style_change the p75 are near 0 or 0
+        # also this variables have high CV (coefficient of variation)
+    # Most of variables have high standard deviation which suggest outliers and
+        # spread data
+    # 875 (73.1%) achieve the target productivity 
 
-    ## Plots: bars and Histograms
+table( df.clean$productivity_cat)
 
-df.no.na %>% 
-    ggplot() + geom_bar( aes( x = team),
-                         alpha = 0.5, ) +
-    scale_x_continuous(breaks = seq(min(unique(df.no.na$team)), 
-                                    max(unique(df.no.na$team)), by = 1)) +
-    ggtitle("Count of Teams")
 
-df.no.na %>%
-    ggplot() + geom_histogram( aes( x = no_of_workers),
-                               alpha = 0.5, fill = "darkblue") +
-    labs(title = "Number of Workers per Team", y = "")
-    
-df.no.na %>%
-    ggplot() + geom_histogram( aes( x = actual_productivity),
-                               alpha = 0.5, fill = "darkblue") +
-    labs(title = "Actual Productivity Histogram", y = "")
+    ## Boxplots
 
-df.no.na %>%
-    ggplot() + geom_histogram( aes( x = wip),
-                               alpha = 0.5, fill = "darkblue") +
-    labs(title = "Unfinished Items Histogram", y = "")
+df.clean %>%
+    ggplot() +
+    geom_boxplot( aes( x = actual_productivity,
+                       y = productivity_cat) ) +
+    labs( y = "") +
+    theme_classic() +
+    theme(legend.position = "none")
 
-df.no.na %>%
-    ggplot() + geom_histogram( aes( x = smv),
-                               alpha = 0.5, fill = "darkblue") +
-    labs(title = "Standard Minute Value Histogram", y = "")
 
-    ## Categorical Data
+df.clean %>%
+    ggplot() +
+    geom_boxplot( aes( x = incentive,
+                       y = productivity_cat) ) +
+    labs( y = "") +
+    theme_classic() +
+    theme(legend.position = "none")
 
-df.no.na %>% 
-    ggplot() + geom_bar( aes( x = quarter),
-                         alpha = 0.5, ) +
-    ggtitle("Count of Month Quarters")
 
-df.no.na %>% 
-    ggplot() + geom_bar( aes( x = department),
-                         alpha = 0.5, ) +
-    ggtitle("Count of Department")
+g1 <- df.clean %>%
+    filter( productivity_cat == "achieved") %>%
+    ggplot() +
+    geom_boxplot( aes( y = reorder(team, actual_productivity),
+                       x = actual_productivity,
+                       fill = productivity_cat ) ) +
+    labs( title = paste( "Productivity is achieved"),
+          subtitle = "On Team levels",
+          y = "") +
+    theme_classic() +
+    theme(legend.position = "none")
+g2 <- df.clean %>%
+    filter( productivity_cat == "unsuccessful") %>%
+    ggplot() +
+    geom_boxplot( aes( y = reorder(team, actual_productivity),
+                       x = actual_productivity,
+                       fill = productivity_cat ) ) +
+    labs( title = paste( "Productivity is unsuccessful"),
+          subtitle = "On Team levels",
+          y = "") +
+    theme_classic() +
+    theme(legend.position = "none")
 
-df.no.na %>% 
-    ggplot() + geom_bar( aes( x = day),
-                         alpha = 0.5, ) +
-    ggtitle("Count of Weekdays")
+(g1|g2) # It can be seen differences between both groups
+        # 'unsuccessful' is mode skewed but 'achieved' has outliers
 
-df.no.na %>% 
-    summary()
+
+df.achieve <- df.clean %>% filter(productivity_cat == "achieved")
+df.unsucces <- df.clean %>% filter(productivity_cat == "unsuccessful")
+
+
+g1 <- df.achieve %>%
+    ggplot() +
+        geom_boxplot( aes( y = reorder(targeted_productivity, actual_productivity),
+                           x = actual_productivity,
+                           fill = productivity_cat ) ) +
+        labs( title = paste( "Productivity is achieved"),
+              subtitle = "On targeted_productivity levels",
+              y = "") +
+        theme_classic() +
+        theme(legend.position = "none")
+g2 <- df.unsucces %>%
+    ggplot() +
+        geom_boxplot( aes( y = reorder(targeted_productivity, actual_productivity),
+                           x = actual_productivity,
+                           fill = productivity_cat ) ) +
+        labs( title = paste( "Productivity is unsuccessful"),
+              subtitle = "On targeted_productivity levels",
+              y = "") +
+        theme_classic() +
+        theme(legend.position = "none")
+
+(g1|g2)
+
+df.achieve %>%
+    ggplot() +
+    geom_boxplot( aes( y = reorder(department, actual_productivity),
+                       x = actual_productivity,
+                       fill = productivity_cat ) ) +
+    labs( title = paste( "Productivity is achieved"),
+          subtitle = "On targeted_productivity levels",
+          y = "") +
+    theme_classic() +
+    theme(legend.position = "none")
+
+# Comparisons between groups on every numeric variable
+
+for (var in colnames(select_if(df.clean[,1:ncol(df.clean)], is.numeric) ) ) {
+    wilx <- wilcox.test(df.unsucces[[var]], df.achieve[[var]])
+    rbis <- abs(sum(-1, (2 * wilx$statistic) / (nrow(df.achieve) * nrow(df.unsucces) ) ) )
+    cat("\n===============\n",
+        "\nMann-Whitney U between spam and not spam on:", var, 
+        "\np-value:", sprintf("%6.4f", wilx$p.value),
+        "\nr:", rbis)
+}   # Variables smv, wip, over_time, incentive, no_of_workers, actual_productivity
+    # will be interesting to the model
+
+
+df.clean %>% 
+    select(smv, wip, over_time, incentive, no_of_workers, actual_productivity) %>% 
+    cor()
+
+
+
+
+
