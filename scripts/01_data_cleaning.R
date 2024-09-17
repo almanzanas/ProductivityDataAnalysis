@@ -86,17 +86,23 @@ df.clean <- df.clean %>% mutate(
 
 table( df.clean$productivity_cat)
 summ <- skim(df.clean)
+
+    # Coefficient of Variation Centered on the Mean:
+        # Reasonable dispersion is associated with coefficients of variation 
+        # less than 50. Coefficients of variation greater than 50 indicate a 
+        # lot of dispersion. Coefficients greater than 100 are generally 
+        # indicative of strong anomalies in the data.
 summ %>% 
     filter(skim_type == "numeric") %>%
-    mutate( cv = numeric.sd / numeric.mean )
+    mutate( cv = (numeric.sd / numeric.mean) * 100 )
     # For incentive, idle_time, idle_men, no_of_style_change the p75 are near 0 or 0
-        # also this variables have high CV (coefficient of variation)
+        # also this variables have high CV
     # Most of variables have high standard deviation which suggest outliers and
         # spread data
     # 875 (73.1%) achieve the target productivity 
 
 table( df.clean$productivity_cat)
-
+prop.table(table( df.clean$productivity_cat))
 
     ## Boxplots
 
@@ -108,6 +114,7 @@ df.clean %>%
     theme_classic() +
     theme(legend.position = "none")
 
+ggbetweenstats(df.clean, productivity_cat, actual_productivity)
 
 df.clean %>%
     ggplot() +
@@ -129,6 +136,7 @@ g1 <- df.clean %>%
           y = "") +
     theme_classic() +
     theme(legend.position = "none")
+
 g2 <- df.clean %>%
     filter( productivity_cat == "unsuccessful") %>%
     ggplot() +
@@ -189,16 +197,22 @@ for (var in colnames(select_if(df.clean[,1:ncol(df.clean)], is.numeric) ) ) {
     wilx <- wilcox.test(df.unsucces[[var]], df.achieve[[var]])
     rbis <- abs(sum(-1, (2 * wilx$statistic) / (nrow(df.achieve) * nrow(df.unsucces) ) ) )
     cat("\n===============\n",
-        "\nMann-Whitney U between spam and not spam on:", var, 
+        "\nMann-Whitney U between 'unsucces' and 'achieve' target_productivity on:", var, 
         "\np-value:", sprintf("%6.4f", wilx$p.value),
         "\nr:", rbis)
 }   # Variables smv, wip, over_time, incentive, no_of_workers, actual_productivity
     # will be interesting to the model
 
 
-df.clean %>% 
-    select(smv, wip, over_time, incentive, no_of_workers, actual_productivity) %>% 
-    cor()
+ggpairs(df.clean, columns = 8:ncol(df.clean))
+    # over_time *** smv (0.65)
+    # smv *** no_of_workers (0.91)
+    # actual_productivity *** smv (-0.122)
+    # actual_productivity *** idle_men (-0.182)
+    # actual_productivity *** no_of_style_change (-0.207)
+    # no_of_workers *** over_time (0.735)
+    # over_time *** wip (0.277)
+
 
 
 

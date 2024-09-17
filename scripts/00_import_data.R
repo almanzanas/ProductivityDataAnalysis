@@ -1,14 +1,15 @@
 # Dataset: https://doi.org/10.24432/C51S6D
 
 # Read data with data.table library
-library(data.table, quietly = TRUE)
-library(tidyverse, quietly = TRUE)
-library(patchwork, quietly = TRUE)
-library(skimr, quietly = TRUE)
-
-library(randomForest, quietly = TRUE)
-library(caret, quietly = TRUE)
-library(ROCR, quietly = TRUE)
+library(data.table)
+library(tidyverse)
+library(patchwork)
+library(ggstatsplot)
+library(GGally)
+library(skimr)
+library(randomForest)
+library(caret)
+library(ROCR)
 
 df <- fread(file = "data/garments_worker_productivity.csv")
 df <- as.data.frame(df, stringsAsFactor = FALSE)
