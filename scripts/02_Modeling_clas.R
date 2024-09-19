@@ -3,7 +3,7 @@
 #
 
 # Selecting the best variables thanks to previous comparisons and plots
-# and creating the data frames for modeling
+# and creating the data frames for modeling (classification)
 
 df.model <- df.original %>% 
     select(department, team, targeted_productivity, smv, wip, over_time,

@@ -5,7 +5,7 @@ author: "Alvaro Manzanas"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   rmdformats::html_clean:
-    code_folding: show
+    code_folding: hide
     self_contained: true
     number_sections: true
     thumbnails: false
@@ -23,97 +23,33 @@ pkgdown:
 editor_options: 
   markdown: 
     wrap: 79
-#bibliography: references.bib
+bibliography: references.bib
 always_allow_html: true
 ---
 
-```{r global_options, include=FALSE}
-knitr::opts_chunk$set(
-    warning = FALSE,
-    fig.align = "center",
-    fig.width = 18,
-    fig.height = 12,
-    out.width = "100%",
-    results = "hold",
-    collapse = TRUE,
-    message = FALSE,
-    warning = FALSE
-)
-```
+# Dataset
 
-#### Dataset {.unnumbered}
+## Variable Information
 
-Productivity Prediction of Garment Employees [Dataset]. (2020). UCI Machine
-Learning Repository. <https://doi.org/10.24432/C51S6D>.
-
-#### Dimensions {.unnumbered}
-
-1197 observations, 15 variables
-
-#### Data Dictionary {.unnumbered}
-
-| header                | type     | description                                                                                                    |
-|--------------------|-------------------|----------------------------------------|
-| date                  | Date     | Date in MM-DD-YYYY                                                                                             |
-| day                   | Category | Day of the Week                                                                                                |
-| quarter               | Category | A portion of the month. A month was divided into four quarters                                                 |
-| department            | Category | Associated department with the instance                                                                        |
-| team_no               | Category | Associated team number with the instance                                                                       |
-| no_of_workers         | Numeric  | Number of workers in each team                                                                                 |
-| no_of_style_change    | Numeric  | Number of changes in the style of a particular product                                                         |
-| targeted_productivity | Category | Targeted productivity set by the Authority for each team for each day.                                         |
-| smv                   | Numeric  | Standard Minute Value, it is the allocated time for a task                                                     |
-| wip                   | Numeric  | Work in progress. Includes the number of unfinished items for products                                         |
-| over_time             | Numeric  | Represents the amount of overtime by each team in minutes                                                      |
-| incentive             | Numeric  | Represents the amount of financial incentive (in BDT) that enables or motivates a particular course of action. |
-| idle_time             | Numeric  | The amount of time when the production was interrupted due to several reasons                                  |
-| idle_men              | Numeric  | The number of workers who were idle due to production interruption                                             |
-| actual_productivity   | Numeric  | The actual % of productivity that was delivered by the workers. It ranges from 0-1.                            |
-
-#### Missing Data {.unnumbered}
-
-There are 506 observations with missing value (42%) on `wip` variable. This
-observations corresponds to 'finishing' category on `department` variable.
-
-# Report
-
-#### Session Info {.unnumbered}
-
-```{r echo=FALSE}
-session.info <- capture.output(utils::sessionInfo())
-grep("R version", session.info, value = TRUE)
-grep("Platform", session.info, value = TRUE)
-session.info[18:22]
-```
-
-#### R Libraries {.unnumbered}
-
-```{r}
-library(data.table)
-library(tidyverse)
-library(patchwork)
-library(ggstatsplot)
-library(GGally)
-library(skimr)
-library(randomForest)
-library(caret)
-library(ROCR)
-```
-
-## Exploratory Data Analysis
-
-EDA of a complete dataset with missing values in 42% of the observation on `wip` variable. Since `wip` means 'work in progress' for the number of items unfinished, and every missing value corresponds to 'finishing' category for `department` variable, It has been deduced that value has to be 0 because the team has finished their work thus there are not unfinished items, then `wip` is 0.
-
-Also It has been found a typographical error on `quarter` variable. It represents 4 quarters of a month but there are 5 levels from Quarter1 to Quarter5. In every month days 29-31 are labeled as Quarter5, then it have been recoded to Quarter4.
-
-The descriptive statistics show high variances due to the presence of outliers. It can be seen a reasonable dispersion on `actual_productivity` variable; `no_of_workers`, `over_time`, and `smv` have high dispersion, and the rest of variables suggests outliers. For almost every variable the data is right skewed and leptokurtic except `actual_productivity` which visually is near normal left-skewed.
-
-The teams which achieve `targeted_productivity` represents 73% of the sample. Also it can be seen differences in both groups being those who achieved the `target_productivity` are the ones with the highest median `actual_productivity`.
-
-The variables `smv`, `wip`, `over_time`, `incentive`, `no_of_workers`, and actual_productivity have the greater differences in median with more effect size, this suggests high importance in order to perform classification prediction (except actual_productivity which will be the target).
-
-
-
-
-
+1.  `date` : Date in MM-DD-YYYY
+2.  `day` : Day of the Week
+3.  `quarter` : A portion of the month. A month was divided into four quarters
+4.  `department` : Associated department with the instance
+5.  `team_no` : Associated team number with the instance
+6.  `no_of_workers` : Number of workers in each team
+7.  `no_of_style_change` : Number of changes in the style of a particular product
+8.  `targeted_productivity` : Targeted productivity set by the Authority for each
+    team for each day.
+9.  `smv` : Standard Minute Value, it is the allocated time for a task
+10. `wip` : Work in progress. Includes the number of unfinished items for
+    products
+11. `over_time` : Represents the amount of overtime by each team in minutes
+12. `incentive` : Represents the amount of financial incentive (in BDT) that
+    enables or motivates a particular course of action.
+13. `idle_time` : The amount of time when the production was interrupted due to
+    several reasons
+14. `idle_men` : The number of workers who were idle due to production
+    interruption
+15. `actual_productivity` : The actual % of productivity that was delivered by
+    the workers. It ranges from 0-1.
 
