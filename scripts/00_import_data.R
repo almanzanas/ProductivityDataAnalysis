@@ -8,6 +8,7 @@ library(ggstatsplot)
 library(GGally)
 library(skimr)
 library(randomForest)
+library(car)
 library(caret)
 library(ROCR)
 
