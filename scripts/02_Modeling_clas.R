@@ -7,7 +7,7 @@
 
 df.model <- df.original %>% 
     select(department, team, targeted_productivity, smv, wip, over_time,
-           incentive, no_of_workers, actual_productivity) %>%
+           incentive, no_of_workers, no_of_style_change, actual_productivity) %>%
     mutate( team = print(sprintf("%02.0f", team) ),
             no_of_workers = ceiling(no_of_workers),
             targeted_productivity = ifelse(targeted_productivity==0.07, 
@@ -43,8 +43,8 @@ set.seed(69)
 n.rows <- nrow(df.model)
 idx <- createDataPartition(df.model$productivity_cat, p = 0.8, list = FALSE)
 
-train.base <- df.model[idx,-c(1,9)]
-test.base <- df.model[-idx,-c(1,9)]
+train.base <- df.model[idx,-c(10)]
+test.base <- df.model[-idx,-c(10)]
 
 
 
@@ -67,10 +67,10 @@ library(randomForest)
 
     ## Random Forest
 
-model.rf <- randomForest(productivity_cat ~ ., data = train.base,
+model.rf <- randomForest(productivity_cat ~ . - team - department, data = train.base,
                          importance = TRUE,
-                         ntree = 210)
-
+                         ntree = 212)
+saveRDS(model.rf, file = "scripts/models/model_random_forest.rds")
 plot(model.rf)
 
 varImpPlot(model.rf)
@@ -78,17 +78,17 @@ varImpPlot(model.rf)
         ### Evaluating the model
 
 model.rf.predict <- predict( model.rf, test.base)
-confusionMatrix( model.rf.predict, test.base$productivity_cat, positive = "unsuccessful")
+confusionMatrix( model.rf.predict, test.base$productivity_cat, positive = "achieved")
 
         ### ROC Curve
 
 rf.df.predict <- data.frame( predict( model.rf, test.base, type = 'prob') )
-rf.roc <- prediction( rf.df.predict$unsuccessful, test.base$productivity_cat)
+rf.roc <- prediction( rf.df.predict$unsuccess, test.base$productivity_cat)
 
 roc <- performance(rf.roc, 'tpr', 'fpr')
 auc <- performance(rf.roc, 'auc')
 plot(roc, colorize = T, lwd = 2,
-     main = "Roc curve. 'unsuccessful' as positive class",
+     main = "Roc curve",
      sub = paste( "AUC =", auc@y.values[[1]] ) )
 abline(0.0, 1.0)
 
@@ -100,25 +100,25 @@ train.Control <- trainControl( method = "repeatedcv",
                                repeats = 8,
                                search = "grid")
 
-model.rf.mc <- train( productivity_cat ~ .,
+model.rf.mc <- train( productivity_cat ~ . - team - department,
                       data = train.base,
                       method = "rf",
-                      tuneGrid = data.frame(mtry = 3),
+                      tuneGrid = data.frame(mtry = 4),
                       ntree = 220,
                       trControl = train.Control)
-
+saveRDS(model.rf.mc, file = "scripts/models/model_monte_carlo_rf.rds")
 print(model.rf.mc)
 
         ### Evaluating the model
         
 model.rf.mc.predict <- predict( model.rf.mc, test.base)
-confusion_matrix <- confusionMatrix( model.rf.mc.predict, test.base$productivity_cat, positive = "unsuccessful")
+confusion_matrix <- confusionMatrix( model.rf.mc.predict, test.base$productivity_cat, positive = "achieved")
 
 
         ### ROC Curve
 
 rf.df.predict <- data.frame( predict( model.rf.mc, test.base, type = 'prob') )
-rf.roc <- prediction( rf.df.predict$unsuccessful, test.base$productivity_cat)
+rf.roc <- prediction( rf.df.predict$unsuccess, test.base$productivity_cat)
 
 roc <- performance(rf.roc, 'tpr', 'fpr')
 auc <- performance(rf.roc, 'auc')
@@ -146,19 +146,18 @@ set.seed(69)
 n.rows <- nrow(df.model.bin)
 idx <- createDataPartition(df.model.bin$productivity_cat, p = 0.8, list = FALSE)
 
-train.bin <- df.model.bin[idx,-c(4,5,9)]
-test.bin <- df.model.bin[-idx,-c(4,5,9)]
+train.bin <- df.model.bin[idx,-c(10)]
+test.bin <- df.model.bin[-idx,-c(10)]
 
 
 
 fit.bin <- glm(data = train.bin,
-               productivity_cat ~ .,
+               productivity_cat ~ . - team - department,
                family = binomial(link="logit") )
 summary(fit.bin)
 
 # Suggestions:
-    # Teams 6 to 11 are more likely to achieve actual_productivity
-    # Also when target productivity are 0.70 and 0.80 the productivity are more
+    # When target productivity are 0.60, 0.70, and 0.80 the productivity are more
         # favorable
     # And 'incentive' variable has high impact
 
@@ -215,7 +214,6 @@ pred.labels <- ifelse(bin.prob > 0.5, 1, 0)
 confusionMatrix(data = factor(pred.labels),
                 reference = factor(test.bin$productivity_cat), 
                 positive = "1")
-
 
 #
 # Support Vector Machines

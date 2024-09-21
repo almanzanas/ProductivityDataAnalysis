@@ -17,7 +17,7 @@ df.model.reg <- df.original %>%
     mutate_if(is.character, as.factor)
 
 # Checking lambda to choose transformations
-
+library(car)
 for (var in colnames(select_if(df.model.reg, is.numeric))) {
     s <- summary(powerTransform(df.model.reg[[var]] + 1))
     cat("\n==========\nVariable:", var, "results:\n")
@@ -79,7 +79,7 @@ library(leaps)
 leaps <- regsubsets(data = train.reg, 
                     actual_productivity ~ . - date 
                     - department - day - quarter
-                    - idle_time - idle_men - no_of_style_change, nbest = 3,
+                    - idle_time - idle_men - team, nbest = 4,
                     nvmax = 50, really.big = T, 
                     )
 
@@ -93,6 +93,10 @@ subsTable <- function(obj, scale){
 subsTable(leaps, scale="adjr2")[1:6,]
 
 
+
+#
+#   # Factor Analisis Principal Components
+
 library(psych)
 train.reg %>% select_if(is.numeric) %>% .[,-15] %>%
 fa.parallel(fa="pc", n.iter=100,
@@ -104,11 +108,15 @@ principal(train.reg[,-c(1:6, 15)], nfactors = 3)
 # Regression with selected variables
 
 sel.var <- c("smv", "wip", "over_time", "incentive", "no_of_workers",
-             "team", "targeted_productivity", "actual_productivity")
+             "team", 
+             "no_of_style_change",
+             "targeted_productivity", "actual_productivity")
 
 train.reg %>%
     select("smv", "wip", "over_time", "incentive", "no_of_workers",
-           "team", "targeted_productivity", "actual_productivity") %>% 
+           "team", 
+           "no_of_style_change",
+           "targeted_productivity", "actual_productivity") %>% 
     select_if(is.numeric) %>%
     cor()
 
@@ -117,15 +125,25 @@ train.reg[,sel.var] %>% select_if(is.numeric) %>%
 
 fit <- lm(actual_productivity ~ #smv + wip + 
               over_time + incentive +
-              no_of_workers + 
-              team + targeted_productivity,
+              no_of_workers + no_of_style_change +
+            #  team + 
+              targeted_productivity,
           data = train.reg)
     # smv and wip excluded for Multicollinearity (VIF > 10)
 
 
 summary(fit)
 
+pred.fit <- predict(fit, test.reg)
+
+Metrics::rmse(test.reg$actual_productivity, pred.fit) # 0.15
+Metrics::mae(test.reg$actual_productivity, pred.fit) # 0.109
+Metrics::mse(test.reg$actual_productivity, pred.fit) # 0.023
+R2(test.reg$actual_productivity, pred.fit) # 0.207
+
 # Suggestions:
+    # Intercept: Dependent Variable value when independent variables are 0
+        # means DV when there are no effect of IV.
     # One standard deviation increase for log(incentive) will  
         # rise 0.399 of actual productivity
     # One standard deviation increase for log(no_of_workers) will 
@@ -160,15 +178,19 @@ vif(fit)
 
 fit.rlm <- MASS::rlm(actual_productivity ~ #smv + wip + 
               over_time + incentive +
-              no_of_workers + 
-              team + targeted_productivity,
+              no_of_workers + no_of_style_change +
+              #team + 
+                  targeted_productivity,
           data = train.reg)
 
 summary(fit.rlm)
 
 fit.rlm.pred <- predict(fit.rlm, test.reg)
 
-Metrics::rmse(fit.rlm.pred, test.reg$actual_productivity)
+Metrics::rmse(test.reg$actual_productivity, fit.rlm.pred) # 0.149
+Metrics::mae(test.reg$actual_productivity, fit.rlm.pred) # 0.106
+Metrics::mse(test.reg$actual_productivity, fit.rlm.pred) # 0.022
+R2(test.reg$actual_productivity, fit.rlm.pred) # 0.213
 
 #
 # Random Forest Regression
@@ -195,6 +217,10 @@ sqrt(mean((fit.rf.pred - test.reg$actual_productivity)^2))
 # Coefficient of Determination:
 summary(lm(fit.rf.pred ~ test.reg$actual_productivity))$r.squared
 
+Metrics::rmse(test.reg$actual_productivity, fit.rf.pred) # 0.1288
+Metrics::mae(test.reg$actual_productivity, fit.rf.pred) # 0.08681
+Metrics::mse(test.reg$actual_productivity, fit.rf.pred) # 0.01658
+R2(test.reg$actual_productivity, fit.rf.pred) # 0.4193
 
 #
 #   Regression Trees
@@ -235,7 +261,7 @@ fit.rpart2
 library(rpart.plot)
 
 rpart.plot(fit.rpart, digits=3, type = 3)
-rpart.plot(fit.rpart2, digits=3, type = 3)
+rpart.plot(fit.rpart2, digits=3, type = 1, tweak=1.4)
 
     ## Prediction
 
@@ -285,7 +311,7 @@ library(Cubist)
 
     # Training set with log() and scale()
 
-fit.cubist <- cubist( x = train.reg[-c(1,2,4,5,7,8,11,12,13,15)],
+fit.cubist <- cubist( x = train.reg[-c(1,2,4,5,7,8,11,12,15)],
                       y = train.reg$actual_productivity,
                       rules = NA)
 
