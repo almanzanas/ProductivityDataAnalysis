@@ -95,7 +95,7 @@ subsTable(leaps, scale="adjr2")[1:6,]
 
 
 #
-#   # Factor Analisis Principal Components
+#   # Principal Components
 
 library(psych)
 train.reg %>% select_if(is.numeric) %>% .[,-15] %>%

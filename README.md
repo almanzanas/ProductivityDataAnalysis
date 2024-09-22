@@ -23,3 +23,6 @@ Objective: Analyze current data and propose a productivity prediction model.
 
 The code developed for this project can be found at [Scripts/](scripts/) written in R scripts with their respective comments. In addition, the analysis report can be read here:
 [Analysis Report](notebooks/00_Report.md)
+
+Also, a procedure like document composed of scripts:
+[Analysis Procedure](notebooks/01_Procedure.md)
