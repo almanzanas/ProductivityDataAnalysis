@@ -1,6 +1,8 @@
 Productivity Prediction
 ================
+
 Alvaro Manzanas
+
 21 September, 2024
 
 # 1 Introduction
@@ -273,7 +275,7 @@ and Cubist Model Tree.
 | **Regression Tree** | 0.4403 | 0.1369 | 0.01875 | 0.09652 |
 | **Cubist Tree** \*  | 0.3902 | 0.132  | 0.01741 | 0.08411 |
 
-- Non-compliance with assumptions
+(*) Non-compliance with assumptions
 
 # 5 Results
 
